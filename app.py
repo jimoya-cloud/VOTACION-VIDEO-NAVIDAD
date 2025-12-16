@@ -17,7 +17,7 @@ st.markdown("""
 
 st.title("🎬 Festival de Postpro Navideño 🎄")
 
-# Lista de alumnos
+# Listado de Alumnos
 alumnos = [
     "ALADREN VILLANUEVA, LUCIA", "AZNAR SERRANO, MARCOS", "BLASCO GRACIA, IVAN JORGE",
     "CARNICER IBÁÑEZ, ÁNGEL", "CARREY DENA, PABLO", "CASTILLO FERNÁNDEZ, MARTÍN",
@@ -30,6 +30,12 @@ alumnos = [
     "POLITE PINEDA, FRANCISCO JAVIER", "RINO BLANCO, CRISTINA", "SÁNCHEZ ROMERO, DARIO"
 ]
 
+# Listado de Jurado
+jurado = ["Jurado 1", "Jurado 2", "Jurado 3", "Jurado 4"]
+
+# Lista completa de personas que pueden votar
+votantes_totales = jurado + alumnos
+
 # Inicializar votos en la sesión
 if 'votos' not in st.session_state:
     st.session_state.votos = pd.DataFrame(columns=['Votante', 'Proyecto', 'Nota'])
@@ -37,20 +43,25 @@ if 'votos' not in st.session_state:
 # --- SECCIÓN DE VOTACIÓN ---
 with st.container():
     st.markdown('<div class="voto-card">', unsafe_allow_html=True)
-    votante = st.selectbox("¿Quién eres?", ["Selecciona tu nombre..."] + alumnos)
-    proyecto = st.selectbox("¿A quién vas a evaluar?", ["Selecciona proyecto..."] + alumnos)
+    
+    # Aquí aparecen Jurado + Alumnos
+    persona_votando = st.selectbox("¿Quién eres?", ["Selecciona tu nombre..."] + votantes_totales)
+    
+    # Aquí solo aparecen Alumnos (que son los que tienen proyecto)
+    proyecto_a_evaluar = st.selectbox("¿A qué proyecto de alumno vas a evaluar?", ["Selecciona proyecto..."] + alumnos)
+    
     nota = st.slider("Puntuación (5 es el máximo)", 1, 5, 3)
     
     if st.button("Enviar Voto 🎥"):
-        if votante != "Selecciona tu nombre..." and proyecto != "Selecciona proyecto...":
-            if votante == proyecto:
+        if persona_votando != "Selecciona tu nombre..." and proyecto_a_evaluar != "Selecciona proyecto...":
+            if persona_votando == proyecto_a_evaluar:
                 st.error("¡No puedes votarte a ti mismo! 🎅")
             else:
-                nuevo_voto = pd.DataFrame({'Votante': [votante], 'Proyecto': [proyecto], 'Nota': [nota]})
+                nuevo_voto = pd.DataFrame({'Votante': [persona_votando], 'Proyecto': [proyecto_a_evaluar], 'Nota': [nota]})
                 st.session_state.votos = pd.concat([st.session_state.votos, nuevo_voto], ignore_index=True)
-                st.success(f"¡Voto enviado con éxito!")
+                st.success(f"¡Voto de {persona_votando} registrado!")
         else:
-            st.warning("Selecciona ambos nombres antes de votar.")
+            st.warning("Selecciona tu nombre y el proyecto antes de votar.")
     st.markdown('</div>', unsafe_allow_html=True)
 
 # --- PANEL DEL PROFESOR Y DESCARGA ---
@@ -60,18 +71,15 @@ with st.expander("🔑 Panel de Control (Solo Profesor)"):
     
     if password == "postpro2024":
         if not st.session_state.votos.empty:
-            # Ranking Top 3
-            st.subheader("🏆 Ranking Actual")
+            st.subheader("🏆 Ranking Actual de Alumnos")
+            # Calcula la media de cada alumno
             ranking = st.session_state.votos.groupby('Proyecto')['Nota'].mean().sort_values(ascending=False).head(3)
             for i, (nombre, media) in enumerate(ranking.items()):
                 st.write(f"{i+1}º: **{nombre}** - Media: {media:.2f} ⭐")
             
             st.divider()
             
-            # Botón para descargar Excel
             st.subheader("📊 Exportar Datos")
-            
-            # Convertir DataFrame a Excel en memoria
             output = BytesIO()
             with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
                 st.session_state.votos.to_excel(writer, index=False, sheet_name='Votos')
@@ -83,3 +91,8 @@ with st.expander("🔑 Panel de Control (Solo Profesor)"):
                 file_name="votos_navidad_postpro.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             )
+            
+            st.write("### Tabla completa de votos (incluye Jurado):")
+            st.dataframe(st.session_state.votos)
+        else:
+            st.info("Esperando los primeros votos...")
